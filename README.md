@@ -42,9 +42,12 @@ An enterprise-ready AI Customer Support Agent powered by **FastAPI**, **Groq (Ll
 
 └───────────────────────────────────┘
 
+---
 
 
-🛡️ Error Handling & Fault Tolerance
+
+## 🛡️ Error Handling & Fault Tolerance
+
 The application enforces strict exception boundaries across all system components:
 
 HTTP 400 (Bad Request): Validates empty queries, missing session IDs, or malformed JSON payloads using Pydantic schemas.
@@ -74,7 +77,9 @@ To execute the automated test suite locally:
 ```bash
 pytest tests/test_agent.py -v
 
-🚀 Deployment Instructions
+---
+
+## 🚀 Deployment Instructions
 
 Option A: Local Development Setup
 Clone the repository:
@@ -88,13 +93,16 @@ Bash
 python -m venv custvenv
 custvenv\Scripts\activate  # On Windows
 # source custvenv/bin/activate # macOS/Linux
+
 pip install -r requirements.txt
 Configure Environment Variables:
 Create a .env file in the root directory:
 
 Code snippet
 GROQ_API_KEY=gsk_your_groq_api_key_here
-Launch Application:
+
+
+## Launch Application:
 
 Bash
 uvicorn app.main:app --reload --port 8000
