@@ -1,116 +1,102 @@
-# AI Customer Support Agent (RAG + Multi-Turn Memory)
+# 🤖 AI Customer Service Agent
 
-An enterprise-ready AI Customer Support Agent powered by **FastAPI**, **Groq (Llama 3.1)**, and **ChromaDB Vector Store**. The agent performs dynamic Retrieval-Augmented Generation (RAG), manages session conversation memory, evaluates vector distances for confidence scoring, triggers automated human escalation, and serves a live interactive Chatbot UI.
+An intelligent, multi-agent automated customer support system designed to handle inbound customer inquiries, perform automated issue resolution, route complex queries, and interface with backend knowledge bases. Built using cutting-edge Generative AI frameworks, LLMs, and API integrations, this agent delivers fast, accurate, and context-aware responses.
 
 ---
 
-## 🛠️ Integrated Tools & APIs
-1. **Groq LLM API (`llama-3.1-8b-instant`):** High-speed LLM engine for instruction-following and grounded customer support generation.
-2. **ChromaDB Vector Store:** Embedded vector database used for semantic indexing and context retrieval.
-3. **FastAPI Web Framework:** High-performance REST framework hosting the agent logic, health checks, and interactive HTML5 Chatbot interface.
+## 🛠️ Integrated Tools & Technologies
+
+* **FastAPI:** High-performance REST framework hosting backend agent orchestration endpoints.
+* **LangChain / Multi-Agent Framework:** Multi-agent routing logic enabling intelligent intent classification, context retention, and specialized task handling.
+* **Groq / LLM Integration:** High-speed LLM inference for natural language understanding and contextual response generation.
+* **ChromaDB Vector Store:** Embedded vector database enabling Retrieval-Augmented Generation (RAG) across customer knowledge bases, FAQs, and support documentation.
+* **Streamlit / Swagger UI:** Interactive frontend interfaces for real-time customer chat interactions and developer testing.
 
 ---
 
 ## 📐 System Architecture & Workflow
 
 ```text
-                               ┌───────────────────────────────────┐
-                               │       Client / Chatbot UI         │
-                               │  (HTML5 Frontend or REST API)     │
-                               └─────────────────┬─────────────────┘
-                                                 │
-                                                 │ POST /api/chat
-                                                 ▼
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                                       FASTAPI AGENT SERVER                                       │
-│                                                                                                  │
-│   ┌───────────────────────────┐      ┌───────────────────────────┐     ┌──────────────────────┐  │
-│   │ 1. Input Sanitization     ├─────►│ 2. Read Session Memory    ├────►│ 3. Vector RAG Search │  │
-│   │    (Pydantic Schema)      │      │    (chat_history_db)      │     │    (ChromaDB Query)  │  │
-│   └───────────────────────────┘      └───────────────────────────┘     └──────────┬───────────┘  │
-│                                                                                   │              │
-│   ┌───────────────────────────┐      ┌───────────────────────────┐                │              │
-│   │ 6. Memory Store Update    │◄─────┤ 5. LLM Response Synthesis │◄───────────────┘              │
-│   │    (Save User + Assistant)│      │    (Groq / Llama 3.1)     │  + Confidence & Escalation   │
-│   └─────────────┬─────────────┘      └───────────────────────────┘    Distance Threshold Scoring │
-└─────────────────┼────────────────────────────────────────────────────────────────────────────────┘
+                               ┌──────────────────────────────────┐
+                               │       Customer / User Client     │
+                               │   (Web Portal / REST API / Chat) │
+                               └────────────────┬─────────────────┘
+                                                │
+                                                │ Inbound Customer Query
+                                                ▼
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   AI CUSTOMER SERVICE AGENT SERVER                              │
+│                                                                                                 │
+│   ┌───────────────────────────┐      ┌───────────────────────────┐    ┌──────────────────────┐  │
+│   │ 1. Intent Classification  ├─────►│ 2. Context Retrieval      ├───►│ 3. Specialized Agent  │  │
+│   │    & Guardrail Checks     │      │    (ChromaDB RAG Engine)  │    │    Routing           │  │
+│   └───────────────────────────┘      └───────────────────────────┘    └──────────┬───────────┘  │
+│                                                                                  │              │
+│   ┌───────────────────────────┐      ┌───────────────────────────┐               │              │
+│   │ 6. Response Synthesis &   │◄─────┤ 5. Action Execution       │◄──────────────┘              │
+│   │    Customer Resolution    │      │    (Tool & API Calls)     │   + 4. LLM Generation       │
+│   └─────────────┬─────────────┘      └───────────────────────────┘     (Context-Aware Response) │
+└─────────────────┼───────────────────────────────────────────────────────────────────────────────┘
                   │
                   ▼
 ┌───────────────────────────────────┐
-│     JSON Client Response          │
-│ {answer, escalate, session_id}    │
-
+│     Structured Agent Response     │
+│  {status, response, human_escal}  │
 └───────────────────────────────────┘
+```
 
 ---
 
-
-
 ## 🛡️ Error Handling & Fault Tolerance
 
-The application enforces strict exception boundaries across all system components:
+The system incorporates robust safety guardrails and graceful error handling across all conversational paths:
 
-HTTP 400 (Bad Request): Validates empty queries, missing session IDs, or malformed JSON payloads using Pydantic schemas.
+* **HTTP 400 (Bad Request / Missing Payload):** Intercepts empty queries or malformed input objects immediately with clear diagnostic feedback.
+* **Human Escalation Boundary:** Automatically detects frustrated sentiment or complex edge cases and flags the ticket for human agent takeover.
+* **RAG Knowledge Base Fallback:** If vector retrieval confidence falls below a set threshold, the agent falls back to a polite clarification query rather than hallucinating answers.
+* **API Rate Limit Guard:** Intercepts external LLM service timeouts or rate limits, returning structured fallback responses to maintain user engagement.
 
-HTTP 500 (Internal Configuration Error): Gracefully intercepts missing server environment variables (GROQ_API_KEY) and returns structured JSON error responses.
+---
 
-HTTP 502 (Bad Gateway / Downstream Provider Failure): Traps external Groq API connection drops or network timeouts via explicit httpx exception wrapping.
+## 🧪 Test Cases & Automated Validation
 
-Vector Store Fallback: If ChromaDB fails to match documents or encounters an exception, the system falls back to a neutral knowledge state and flags the session for human review (escalate: true).
- 
- ## 🧪 Test Cases
-
-Automated test cases are implemented using `pytest` and FastAPI's `TestClient` in `tests/test_agent.py`.
+The project includes an automated test suite executed via `pytest` to ensure prompt stability, retrieval accuracy, and endpoint resilience.
 
 ### 5 Core Test Scenarios
 
-| Test Case | Scenario | Input Query | Expected Output & Assertion Logic |
+| Test Case | Scenario | Input Target | Expected Assertion & Validation |
 | :--- | :--- | :--- | :--- |
-| **TC-01** | **Direct FAQ Query** | `"How long does standard shipping take?"` | Retrieves exact FAQ answer (`3 to 5 business days`); returns `escalate: false`. |
-| **TC-02** | **Semantic Vector Match** | `"When will my package arrive at my house?"` | Matches shipping policies using vector similarity without exact keyword overlap; returns `escalate: false`. |
-| **TC-03** | **Multi-Turn Context Memory** | `"Can I speed that up?"` (Follow-up query) | Reads past turn from `chat_history_db`, understands "that" refers to shipping, and returns Express Shipping options. |
-| **TC-04** | **Explicit Keyword Escalation** | `"I want to speak to a human manager immediately"` | Detects high-risk keyword `human`; sets `escalate: true`. |
-| **TC-05** | **Out-of-Scope Fallback** | `"What is the orbital velocity of Jupiter?"` | Vector distance exceeds threshold cutoff (`> 1.8`); safely triggers `escalate: true`. |
-
-### Running the Tests
-To execute the automated test suite locally:
-```bash
-pytest tests/test_agent.py -v
+| **TC-01** | **General Query Resolution** | Standard FAQ Question | Asserts HTTP status `200` and high-confidence, contextually relevant answer. |
+| **TC-02** | **RAG Knowledge Retrieval** | Policy / Process Inquiry | Verifies accurate embedding search and citation of relevant internal documentation. |
+| **TC-03** | **Human Escalation Trigger** | High Sentiment / Complex Issue | Asserts human escalation flag is set to `true` with routed summary. |
+| **TC-04** | **Prompt Injection Prevention** | Adversarial / Jailbreak Input | Asserts guardrail detection blocks request without leaking system prompt or state. |
+| **TC-05** | **Empty Payload Validation** | Blank Message Payload | Asserts HTTP status `400` or `422` validation handling without agent disruption. |
 
 ---
 
 ## 🚀 Deployment Instructions
 
-Option A: Local Development Setup
-Clone the repository:
+### Option A: Local Development Setup
+1. **Clone Repository & Navigate:**
+   * `git clone https://github.com/YOUR_USERNAME/ai-customer-service-agent.git`
+   * `cd ai-customer-service-agent`
+2. **Create Virtual Environment & Install Dependencies:**
+   * `python -m venv venv`
+   * Activate environment: `venv\Scripts\activate` *(Windows)* or `source venv/bin/activate` *(macOS/Linux)*
+   * `pip install -r requirements.txt`
+3. **Set Environment Variables:**
+   * Create a `.env` file in the root directory:
+     ```env
+     GROQ_API_KEY=your_groq_api_key_here
+     ```
+4. **Launch Application:**
+   * `uvicorn app.main:app --reload --port 8000`
+   * Interactive API Documentation (Swagger UI): `http://127.0.0.1:8000/docs`
 
-Bash
-git clone https://github.com/LakshmiMeyyappan/ai-customer-support-agent.git
-cd ai-customer-support-agent
-Create virtual environment & install dependencies:
+---
 
-Bash
-python -m venv custvenv
-custvenv\Scripts\activate  # On Windows
-# source custvenv/bin/activate # macOS/Linux
+### Option B: Cloud Container Deployment (Render / Docker)
+This application is fully containerized using Docker for production web hosting.
 
-pip install -r requirements.txt
-Configure Environment Variables:
-Create a .env file in the root directory:
-
-Code snippet
-GROQ_API_KEY=gsk_your_groq_api_key_here
-
-
-## Launch Application:
-
-Bash
-uvicorn app.main:app --reload --port 8000
-Live Chatbot UI: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
-
-Swagger API Documentation: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
-
-Option B: Live Cloud Deployment (Render)
-Live Web App & Chatbot UI: [https://ai-customer-support-agent.onrender.com/](https://ai-customer-support-agent.onrender.com/)
-
-Swagger OpenAPI Docs: [https://ai-customer-support-agent.onrender.com/docs](https://ai-customer-support-agent.onrender.com/docs)
+* **Live Web Endpoint:** `https://ai-customer-service-agent.onrender.com`
+* **Live Interactive Playground (Swagger UI):** `https://ai-customer-service-agent.onrender.com/docs`
