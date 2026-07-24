@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalinga AI - Customer Support Assistant</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+    
+    .chat-container { width: 100%; max-width: 600px; height: 85vh; background: #1e293b; border-radius: 16px; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #334155; }
+    
+    /* Header */
+    .chat-header { padding: 18px 24px; background: #0f172a; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; }
+    .header-title h2 { font-size: 1.1rem; color: #f1f5f9; font-weight: 600; }
+    .header-title p { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+    .badge { background: #059669; color: #ecfdf5; font-size: 0.7rem; padding: 4px 10px; border-radius: 12px; font-weight: 600; text-transform: uppercase; }
+
+    /* Chat Messages Box */
+    .chat-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+    .message { max-width: 80%; padding: 12px 16px; border-radius: 14px; font-size: 0.9rem; line-height: 1.5; word-wrap: break-word; }
+    
+    .message.user { align-self: flex-end; background: #2563eb; color: #ffffff; border-bottom-right-radius: 2px; }
+    .message.bot { align-self: flex-start; background: #334155; color: #f8fafc; border-bottom-left-radius: 2px; }
+    
+    /* Escalation Box */
+    .escalation-banner { background: #7f1d1d; border: 1px solid #f87171; color: #fecaca; padding: 10px 14px; border-radius: 8px; font-size: 0.8rem; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+
+    /* Typing Indicator */
+    .typing { display: flex; gap: 4px; padding: 10px 14px; background: #334155; border-radius: 14px; align-self: flex-start; width: fit-content; }
+    .dot { width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; animation: blink 1.4s infinite ease-in-out both; }
+    .dot:nth-child(1) { animation-delay: -0.32s; }
+    .dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes blink { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+    /* Suggestions */
+    .suggestions { display: flex; gap: 8px; overflow-x: auto; padding: 0 20px 12px; scrollbar-width: none; }
+    .chip { background: #1e293b; border: 1px solid #475569; color: #cbd5e1; padding: 6px 12px; border-radius: 16px; font-size: 0.75rem; white-space: nowrap; cursor: pointer; transition: all 0.2s; }
+    .chip:hover { background: #334155; color: #ffffff; }
+
+    /* Input Footer */
+    .chat-footer { padding: 14px 20px; background: #0f172a; border-top: 1px solid #334155; display: flex; gap: 10px; }
+    .chat-footer input { flex: 1; background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 12px 16px; color: #fff; font-size: 0.9rem; outline: none; }
+    .chat-footer input:focus { border-color: #2563eb; }
+    .chat-footer button { background: #2563eb; border: none; color: #fff; padding: 0 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.2s; }
+    .chat-footer button:hover { background: #1d4ed8; }
+  </style>
+</head>
+<body>
+
+  <div class="chat-container">
+    <div class="chat-header">
+      <div class="header-title">
+        <h2>AI Support Assistant</h2>
+        <p>RAG Knowledge Base + Context Memory</p>
+      </div>
+      <span class="badge">Online</span>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+      <div class="message bot">
+        Hello! 👋 I'm your AI Support Assistant. How can I help you today with shipping, orders, or returns?
+      </div>
+    </div>
+
+    <div class="suggestions">
+      <div class="chip" onclick="sendQuickQuery('How long does standard shipping take?')">📦 Shipping Time</div>
+      <div class="chip" onclick="sendQuickQuery('What is your return policy?')">🔄 Return Policy</div>
+      <div class="chip" onclick="sendQuickQuery('Can I speed that up?')">⚡ Express Shipping</div>
+      <div class="chip" onclick="sendQuickQuery('I need to speak to a human manager')">🚨 Escalate Issue</div>
+    </div>
+
+    <div class="chat-footer">
+      <input type="text" id="userInput" placeholder="Ask a question..." onkeydown="if(event.key === 'Enter') sendMessage()" />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <script>
+    // Generate a unique session ID for context memory retention
+    const sessionId = "session_" + Math.random().toString(36).substring(2, 9);
+
+    async function sendMessage() {
+      const input = document.getElementById("userInput");
+      const text = input.value.trim();
+      if (!text) return;
+
+      appendMessage(text, "user");
+      input.value = "";
+      showTyping();
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId, query: text })
+        });
+
+        const data = await response.json();
+        removeTyping();
+
+        appendMessage(data.answer, "bot", data.escalate);
+      } catch (err) {
+        removeTyping();
+        appendMessage("Sorry, I encountered a network error. Please try again.", "bot");
+      }
+    }
+
+    function sendQuickQuery(query) {
+      document.getElementById("userInput").value = query;
+      sendMessage();
+    }
+
+    function appendMessage(text, sender, escalate = false) {
+      const chatBox = document.getElementById("chatBox");
+      const msgDiv = document.createElement("div");
+      msgDiv.className = `message ${sender}`;
+      msgDiv.innerText = text;
+
+      if (escalate) {
+        const escDiv = document.createElement("div");
+        escDiv.className = "escalation-banner";
+        escDiv.innerHTML = "⚠️ <strong>Escalation Triggered:</strong> Transferred to human support queue.";
+        msgDiv.appendChild(escDiv);
+      }
+
+      chatBox.appendChild(msgDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTyping() {
+      const chatBox = document.getElementById("chatBox");
+      const typingDiv = document.createElement("div");
+      typingDiv.id = "typingIndicator";
+      typingDiv.className = "typing";
+      typingDiv.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+      chatBox.appendChild(typingDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeTyping() {
+      const indicator = document.getElementById("typingIndicator");
+      if (indicator) indicator.remove();
+    }
+  </script>
+</body>
+</html>
